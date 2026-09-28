@@ -1,46 +1,39 @@
 # DRVC-Net
 
-This repository provides a paper-aligned PyTorch implementation of
-**DRVC-Net: Dual-Reference Speaker-Relative Visual Change Learning for Multimodal
-Emotion Recognition in Conversations**.
+DRVC-Net is a multimodal emotion recognition model for conversations. It combines
+text, audio, and facial information with causal dialogue context, and represents
+facial change relative to two same-speaker references: the latest reliable visual
+state and a quality-weighted historical baseline.
 
-DRVC-Net turns same-speaker visual history into two explicit coordinates: the
-latest reliable state and a distinct baseline of earlier states. This codebase
-implements that idea as a complete, auditable experiment pipeline:
+The visual stream contains four regions—global face, brows, eyes, and mouth.
+Region-specific change features and quality-conditioned gates determine how much
+each reference contributes to the current utterance. The fused utterance sequence
+is processed by a causal Transformer for emotion classification.
 
-1. build a causal, dialogue-ordered utterance manifest;
-2. create IEMOCAP leave-one-session-out or MELD official splits;
-3. align full-face, brow, eye, and mouth observations and compute reliability;
-4. cache frozen RoBERTa-base, wav2vec2-base-960h, and ImageNet ResNet-18 features;
-5. build region-specific same-speaker recent and historical reference indices;
-6. train B6 or the paper's B/C/N/G controlled alternatives;
-7. export utterance-level predictions, mechanism-focused subgroup metrics,
-   paired dialogue bootstrap intervals, permutation tests, interventions, and
-   quality stress tests.
+Experiments use six-class IEMOCAP and seven-class MELD. The repository includes
+data preparation, feature extraction, model training, controlled variants,
+evaluation, statistical analysis, and visual-quality stress tests.
 
-The repository keeps licensed assets in their official distribution channels:
-obtain IEMOCAP, MELD, and the upstream RetinaFace, FAN, ByteTrack, and TalkNet
-checkpoints under their respective terms, then connect them through the paths
-and manifests described below.
+## Repository structure
 
-## Paper-to-code map
-
-| Paper component | Implementation |
+| Path | Contents |
 |---|---|
-| Eqs. 1--4, regional observations and quality | `drvcnet.preprocessing.quality`, `regions`, `features` |
-| Eqs. 5--8, causal dual references | `drvcnet.data.references` |
-| Eqs. 9--12, change/gates/regional attention | `drvcnet.models.visual_reference` |
-| Eqs. 13--15, multimodal causal context | `drvcnet.models.context`, `drvc_net` |
-| Weighted objective and training protocol | `drvcnet.training` |
-| WF1/MF1/accuracy and paired statistics | `drvcnet.evaluation` |
-| B0--B7, B3Q/B4Q, C1--C3, N4, G1/G2 | `ModelVariant` and the visual module |
+| `src/drvcnet/data/` | IEMOCAP/MELD manifests, splits, causal windows, and dual-reference indices |
+| `src/drvcnet/preprocessing/` | Face tracking, speaker-score calibration, regional crops, quality estimation, and frozen features |
+| `src/drvcnet/models/` | Dual-reference visual module, multimodal fusion, and causal context encoder |
+| `src/drvcnet/training/` | Losses, optimizer schedule, development search, checkpoints, and run provenance |
+| `src/drvcnet/evaluation/` | Metrics, subgroups, bootstrap tests, interventions, and stress evaluation |
+| `configs/` | IEMOCAP, MELD, and model-variant configurations |
+| `scripts/` | Static checks and parameter-count reports |
+| `docs/` | Method details and data formats |
 
-See [`docs/METHOD_MAPPING.md`](docs/METHOD_MAPPING.md) for exact tensor rules and
-[`docs/DATA_FORMAT.md`](docs/DATA_FORMAT.md) for the manifest/cache contracts.
+Detailed tensor definitions are available in
+[`docs/METHOD_MAPPING.md`](docs/METHOD_MAPPING.md), and file formats are described
+in [`docs/DATA_FORMAT.md`](docs/DATA_FORMAT.md).
 
 ## Installation
 
-Python 3.10 or 3.11 and the paper's PyTorch/CUDA pair are recommended:
+Python 3.10 or 3.11 is recommended:
 
 ```bash
 python -m venv .venv
@@ -49,8 +42,7 @@ python -m pip install -e .
 python -m pip install -e ".[vision]"   # RetinaFace/FAN/ByteTrack adapters
 ```
 
-The pinned core versions reproduce the declared PyTorch 2.3.1 environment.
-GPU wheel selection may require the matching PyTorch CUDA 12.1 index.
+The default environment uses PyTorch 2.3.1 and CUDA 12.1.
 
 ## Data preparation
 
@@ -63,9 +55,8 @@ drvc-make-splits --manifest data/iemocap/manifest.jsonl \
   --output-dir data/iemocap/splits --dataset IEMOCAP --seed 2026
 ```
 
-The parser retains only `ang`, `hap`, `exc`, `sad`, `fru`, and `neu`, and assigns
-speaker IDs from the utterance identifier. Historical references additionally
-require `past.end_time <= current.start_time`.
+The IEMOCAP configuration uses `ang`, `hap`, `exc`, `sad`, `fru`, and `neu`.
+Historical references satisfy `past.end_time <= current.start_time`.
 
 ### MELD
 
@@ -79,15 +70,14 @@ drvc-make-splits --manifest data/meld/manifest.jsonl \
   --output-dir data/meld/splits --dataset MELD --seed 2026
 ```
 
-### Auditable face assignment
+### Visual preprocessing
 
 The visual pipeline separates candidate tracking from target-speaker assignment.
 `drvc-detect-tracks` extracts RetinaFace/FAN/ByteTrack candidates, and
 `drvc-merge-assignments` joins frozen TalkNet or metadata-based speaker scores.
-The resulting `frame_assignments.jsonl` makes every selected track, confidence,
-landmark set, pose estimate, and visibility factor traceable. This explicit
-contract supports both IEMOCAP's role-to-track mapping and MELD's TalkNet-based
-assignment while keeping the regional model unchanged.
+The resulting `frame_assignments.jsonl` stores the selected track, confidence,
+landmarks, pose, and regional visibility. The same preprocessing interface is
+used for IEMOCAP metadata-based assignment and MELD TalkNet scores.
 
 Sharpness endpoints are fitted on training observations, frozen, and then used
 by the four-region quality equation:
@@ -125,9 +115,10 @@ drvc-build-references --config configs/meld_b6.yaml
 
 ## Training and evaluation
 
-Each configuration represents one dataset split/fold and one training seed.
-For the paper protocol, run seeds 42, 123, and 2026; for IEMOCAP, repeat all five
-outer folds. Hyperparameter search uses seed 17 only.
+Each configuration represents one dataset split or fold and one training seed.
+The main experiments use seeds 42, 123, and 2026. IEMOCAP uses five
+leave-one-session-out folds, and MELD uses the official split. Development search
+uses seed 17.
 
 ```bash
 drvc-train --config configs/iemocap_b6.yaml
@@ -142,8 +133,8 @@ window receives a loss. Every run records the resolved configuration, Git state,
 data/cache hashes, software versions, hardware, checkpoint hash, epoch history,
 and utterance-level prediction hash.
 
-To switch a controlled model, copy a dataset config and change `model.variant`.
-Structural alternatives must be trained from scratch.
+Set `model.variant` to select B0--B7, B3Q/B4Q, C1--C3, N4, G1, or G2. Each
+structural variant is trained independently.
 
 Aggregate all seeds/folds and compute paired comparisons directly from saved
 utterance predictions:
@@ -159,35 +150,17 @@ drvc-statistics --config configs/iemocap_b6.yaml \
   --output outputs/iemocap/b6_vs_b2.json
 ```
 
-The stress pipeline preserves the clean/current/reference cache distinction.
-Build blur or occlusion crops, extract a paired feature cache, and select it as
-the current or reference store with `drvc-stress-test`. N1/N2/N3 reference
-substitutions are produced with `drvc-build-intervention`.
+`drvc-stress-test` evaluates current/reference missingness, blur, occlusion, and
+speaker-assignment perturbations. `drvc-build-intervention` creates the N1/N2/N3
+reference substitutions.
 
 ## Static validation
 
-The fast validation path checks repository structure before any experiment:
+Run the static repository check with:
 
 ```bash
 python scripts/static_check.py
 ```
 
-The checker parses every Python file with `ast`, validates YAML/JSON syntax, and
-resolves local module paths. It performs a pure static check and leaves model and
-data execution to the experiment commands.
-
-## Reproducibility notes
-
-- References are built before inserting the current observation into memory.
-- Memory resets at each dialogue and is label-independent by construction.
-- A historical pool excludes the most recent eligible observation and contains
-  at most four earlier observations.
-- Frozen visual features are cached before the trainable regional projection;
-  current and historical observations therefore share the live projection.
-- Every historical token retains the references available at its own prediction
-  boundary, guaranteeing prefix-consistent causal windows.
-- Missing inputs are zeroed and accompanied by explicit masks. An all-missing
-  visual utterance returns an exact zero visual vector without a fully masked
-  softmax.
-- Every reported result is regenerated from saved utterance-level predictions,
-  making folds, seeds, subgroup supports, and paired comparisons fully traceable.
+The checker parses Python files, validates YAML/JSON syntax, and resolves local
+module paths without starting model or data execution.
