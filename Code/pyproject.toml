@@ -1,0 +1,71 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "drvc-net"
+version = "0.1.0"
+description = "Reference implementation of DRVC-Net for multimodal emotion recognition in conversations"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.26,<3",
+  "opencv-python>=4.9,<5",
+  "pandas>=2.2,<3",
+  "PyYAML>=6.0,<7",
+  "scikit-learn>=1.4,<2",
+  "torch==2.3.1",
+  "torchaudio==2.3.1",
+  "torchvision==0.18.1",
+  "transformers>=4.41,<5",
+]
+
+[project.optional-dependencies]
+vision = [
+  "face-alignment>=1.4,<2",
+  "retina-face>=0.0.17,<1",
+  "supervision>=0.22,<1",
+]
+dev = [
+  "mypy>=1.10,<2",
+  "ruff>=0.5,<1",
+  "types-PyYAML>=6.0,<7",
+]
+
+[project.scripts]
+drvc-build-manifest = "drvcnet.cli:build_manifest_main"
+drvc-make-splits = "drvcnet.cli:make_splits_main"
+drvc-detect-tracks = "drvcnet.cli:detect_tracks_main"
+drvc-calibrate-speaker-scores = "drvcnet.cli:calibrate_speaker_scores_main"
+drvc-merge-assignments = "drvcnet.cli:merge_assignments_main"
+drvc-calibrate-sharpness = "drvcnet.cli:calibrate_sharpness_main"
+drvc-prepare-visual = "drvcnet.cli:prepare_visual_main"
+drvc-build-perturbation = "drvcnet.cli:build_perturbation_main"
+drvc-extract-features = "drvcnet.cli:extract_features_main"
+drvc-build-references = "drvcnet.cli:build_references_main"
+drvc-train = "drvcnet.cli:train_main"
+drvc-search = "drvcnet.cli:search_main"
+drvc-evaluate = "drvcnet.cli:evaluate_main"
+drvc-stress-test = "drvcnet.cli:stress_test_main"
+drvc-statistics = "drvcnet.cli:statistics_main"
+drvc-shift-contrast = "drvcnet.cli:shift_contrast_main"
+drvc-summarize = "drvcnet.cli:summarize_main"
+drvc-build-intervention = "drvcnet.cli:build_intervention_main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_unused_configs = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+ignore_missing_imports = true

@@ -1,0 +1,56 @@
+experiment: drvc_b6_meld
+dataset:
+  name: MELD
+  manifest: data/meld/manifest.jsonl
+  split_file: data/meld/splits/official.json
+  cache_dir: cache/meld
+  reference_file: cache/meld/references.jsonl
+  labels: [anger, disgust, fear, joy, neutral, sadness, surprise]
+  outer_fold: null
+  split_seed: 2026
+  exclude_overlapping_history: false
+video:
+  max_frames: 8
+  regions: [global, brow, eye, mouth]
+  crop_size: 224
+  min_distinct_valid_frames: 2
+  quality_threshold: 0.41
+  long_history_k: 4
+  quality_epsilon: 1.0e-6
+model:
+  variant: B6
+  text_input_dim: 768
+  audio_input_dim: 768
+  visual_input_dim: 512
+  hidden_dim: 256
+  role_dim: 32
+  max_roles: 16
+  context_layers: 2
+  context_heads: 4
+  context_ff_dim: 1024
+  context_window: 32
+  classifier_hidden_dim: 256
+  c1_hidden_dim: 1152
+  c2_hidden_dim: 342
+  c3_ff_dim: 640
+  shift_lambda: 0.0
+  dropout: 0.2
+  enabled_modalities: [text, audio, visual]
+train:
+  seed: 42
+  lr: 0.0003
+  weight_decay: 0.01
+  physical_batch_size: 16
+  gradient_accumulation_steps: 2
+  max_epochs: 40
+  patience: 5
+  warmup_fraction: 0.05
+  max_grad_norm: 1.0
+  mixed_precision: true
+  num_workers: 4
+evaluation:
+  bootstrap_repeats: 10000
+  permutation_repeats: 10000
+  statistical_seed: 20260926
+  prediction_file: outputs/meld/seed42/predictions.jsonl
+output_dir: outputs/meld/seed42

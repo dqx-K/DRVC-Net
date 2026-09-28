@@ -1,0 +1,22 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+build/
+dist/
+
+# Licensed corpora, derived faces, frozen features, and model outputs.
+data/
+cache/
+checkpoints/
+outputs/
+runs/
+wandb/
+
+# Local model downloads and credentials.
+.env
+.cache/

@@ -1,0 +1,19 @@
+# Structural alternatives described in the paper. Override model.variant in a
+# dataset configuration with one of these identifiers.
+variants:
+  B0: {description: "Text + audio only"}
+  B1: {description: "Current global face only"}
+  B2: {description: "Static current four-region model"}
+  B3: {description: "Recent branch with hard availability gate"}
+  B4: {description: "Historical branch with hard availability gate"}
+  B5: {description: "Dual references with hard availability gates"}
+  B3Q: {description: "Recent branch with learned quality gate"}
+  B4Q: {description: "Historical branch with learned quality gate"}
+  B6: {description: "Full DRVC-Net"}
+  B7: {description: "DRVC-Net with the optional training-only shift objective"}
+  N4: {description: "Recent reference copied to both learned branches"}
+  G1: {description: "Learned gates without continuous quality fields"}
+  G2: {description: "Fixed current/reference quality-product gates"}
+  C1: {description: "Static regional model with residual capacity control"}
+  C2: {description: "History concatenation control"}
+  C3: {description: "History attention control"}
