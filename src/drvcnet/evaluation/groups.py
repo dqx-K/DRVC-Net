@@ -9,6 +9,8 @@ from typing import Any
 def both_reference_group(record: dict[str, Any]) -> bool:
     """Current/recent/historical validity in at least two local regions."""
 
+    if "both" in record:
+        return bool(record["both"])
     current = [bool(value) for value in record["current_mask"]]
     recent = [bool(value) for value in record["recent_mask"]]
     historical = [bool(value) for value in record["historical_mask"]]
@@ -33,5 +35,12 @@ def select_group(records: Sequence[dict[str, Any]], group: str) -> list[dict[str
             if both_reference_group(record) and record.get("shift_group") == subgroup
         ]
     if group == "current_visual_missing":
-        return [record for record in records if not any(record["current_mask"])]
+        return [
+            record
+            for record in records
+            if bool(record.get("visual_missing", not any(record["current_mask"])))
+        ]
+    if group.startswith("history_"):
+        history_bin = group.removeprefix("history_")
+        return [record for record in records if record.get("history_bin") == history_bin]
     raise ValueError(f"Unknown subgroup: {group}")

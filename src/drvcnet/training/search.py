@@ -49,6 +49,10 @@ def development_search(
         reverse=True,
     )
     result = {
+        "dataset": config.dataset.name,
+        "outer_fold": config.dataset.outer_fold,
+        "architecture": config.model.architecture,
+        "variant": config.model.variant.value,
         "selected": {
             "learning_rate": ranked[0]["learning_rate"],
             "dropout": ranked[0]["dropout"],

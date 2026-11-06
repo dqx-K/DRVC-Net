@@ -17,6 +17,11 @@ outputs/
 runs/
 wandb/
 
+# Local legacy/result-alignment artifacts are not part of the public release.
+Supplementary_m/predictions_part_*
+Supplementary_m/run_records.jsonl
+Supplementary_m/paper_alignment_*
+
 # Local model downloads and credentials.
 .env
 .cache/

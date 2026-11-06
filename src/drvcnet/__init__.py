@@ -1,4 +1,4 @@
-"""DRVC-Net paper-aligned reference implementation."""
+"""DRVC-Net multimodal conversational emotion recognition."""
 
 from drvcnet.config import ExperimentConfig, load_config
 from drvcnet.constants import REGIONS, ModelVariant

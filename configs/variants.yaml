@@ -17,3 +17,13 @@ variants:
   C1: {description: "Static regional model with residual capacity control"}
   C2: {description: "History concatenation control"}
   C3: {description: "History attention control"}
+regional_pairs:
+  R1: {regions: [global]}
+  R2: {regions: [brow, eye]}
+  R3: {regions: [brow, eye, mouth]}
+  R4: {regions: [global, brow, eye]}
+  R5: {regions: [mouth]}
+external_architectures:
+  MMGCN: {architecture: mmgcn, description: "Past-only multimodal graph convolution"}
+  SDT: {architecture: sdt, description: "Causal intra/inter-modal self-distillation"}
+  CSS: {architecture: css, description: "Causal cross-space polynomial fusion with PGM"}

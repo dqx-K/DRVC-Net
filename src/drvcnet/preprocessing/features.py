@@ -78,10 +78,41 @@ class FrozenAudioEncoder(nn.Module):
 
 
 class FrozenVisualEncoder(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, backbone_name: str, checkpoint: Path | None = None) -> None:
         super().__init__()
         weights = ResNet18_Weights.IMAGENET1K_V1
-        backbone = resnet18(weights=weights)
+        if backbone_name == "imagenet_resnet18":
+            backbone = resnet18(weights=weights)
+        elif backbone_name == "ferplus_resnet18":
+            if checkpoint is None:
+                raise ValueError("FER+ ResNet-18 requires a checkpoint path")
+            backbone = resnet18(weights=None)
+            payload = torch.load(checkpoint, map_location="cpu")
+            if isinstance(payload, dict):
+                for key in ("state_dict", "model", "backbone"):
+                    if key in payload and isinstance(payload[key], dict):
+                        payload = payload[key]
+                        break
+            if not isinstance(payload, dict):
+                raise ValueError("FER+ checkpoint must contain a state dictionary")
+            state = {}
+            for raw_name, value in payload.items():
+                name = str(raw_name)
+                for prefix in ("module.", "model.", "backbone."):
+                    if name.startswith(prefix):
+                        name = name[len(prefix) :]
+                if not name.startswith("fc."):
+                    state[name] = value
+            incompatible = backbone.load_state_dict(state, strict=False)
+            unexpected = [name for name in incompatible.unexpected_keys if not name.startswith("fc.")]
+            missing = [name for name in incompatible.missing_keys if not name.startswith("fc.")]
+            if unexpected or missing:
+                raise ValueError(
+                    f"FER+ checkpoint does not match ResNet-18: missing={missing}, "
+                    f"unexpected={unexpected}"
+                )
+        else:
+            raise ValueError(f"Unknown visual backbone: {backbone_name}")
         self.model = nn.Sequential(*list(backbone.children())[:-1])
         self.transform = weights.transforms()
         self.model.requires_grad_(False).eval()
@@ -172,7 +203,9 @@ def extract_frozen_features(
     torch_device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
     text_encoder = FrozenTextEncoder(text_checkpoint).to(torch_device).eval()
     audio_encoder = FrozenAudioEncoder(audio_checkpoint).to(torch_device).eval()
-    visual_encoder = FrozenVisualEncoder().to(torch_device).eval()
+    visual_encoder = FrozenVisualEncoder(
+        config.video.visual_backbone, config.video.visual_checkpoint
+    ).to(torch_device).eval()
     observation_path = Path(visual_observations).expanduser().resolve()
     observations = {str(value["utterance_id"]): value for value in read_jsonl(observation_path)}
     records = [UtteranceRecord.from_dict(value) for value in read_jsonl(config.dataset.manifest)]

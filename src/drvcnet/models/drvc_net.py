@@ -23,6 +23,7 @@ class ModelOutput:
     text: Tensor
     audio: Tensor
     shift_logits: Tensor | None
+    auxiliary_logits: tuple[Tensor, ...] = ()
 
 
 class DRVCNet(nn.Module):
@@ -94,7 +95,7 @@ class DRVCNet(nn.Module):
         )
         token = self.fusion(torch.cat([text, audio, visual.visual, role, metadata], dim=-1))
         context = self.context(token, batch["attention_mask"])
-        target_index = batch["lengths"].long() - 1
+        target_index = batch["target_indices"].long()
         batch_index = torch.arange(context.shape[0], device=context.device)
         classifier_input = torch.cat(
             [
@@ -117,6 +118,7 @@ class DRVCNet(nn.Module):
             text=text,
             audio=audio,
             shift_logits=shift_logits,
+            auxiliary_logits=(),
         )
 
     def trainable_parameter_count(self) -> int:

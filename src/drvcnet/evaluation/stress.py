@@ -128,9 +128,9 @@ def evaluate_stress_checkpoint(
     model.load_state_dict(checkpoint["model"], strict=True)
     metrics, predictions = predict(model, loader, config, device)
     for record in predictions:
-        record["condition"] = kind
-        record["level"] = level
-        record["perturbation_seed"] = perturbation_seed
+        record["stress_condition"] = kind
+        record["stress_level"] = level
+        record["corruption_seed"] = perturbation_seed
     return {"metrics": metrics, "predictions": predictions}
 
 

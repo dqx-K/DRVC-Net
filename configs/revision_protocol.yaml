@@ -1,0 +1,249 @@
+seed_sets:
+  final: [42, 123, 2026]
+  stability: [42, 123, 2026, 314, 2025]
+
+datasets:
+  IEMOCAP:
+    folds: [1, 2, 3, 4, 5]
+    split_template: data/iemocap/splits/fold{fold}.json
+  MELD:
+    folds: [null]
+    split_file: data/meld/splits/official.json
+
+experiments:
+  B0:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: B0}}
+  B1:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: B1}}
+  B2:
+    datasets: [IEMOCAP, MELD]
+    seed_set: stability
+    overrides: {model: {architecture: drvc, variant: B2}}
+  B3:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: B3}}
+  B4:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: B4}}
+  B5:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: B5}}
+  B3Q:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: B3Q}}
+  B4Q:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: B4Q}}
+  B6:
+    datasets: [IEMOCAP, MELD]
+    seed_set: stability
+    overrides: {model: {architecture: drvc, variant: B6}}
+  B7:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: B7, shift_lambda: 0.10}}
+  C1:
+    datasets: [IEMOCAP, MELD]
+    seed_set: stability
+    overrides: {model: {architecture: drvc, variant: C1}}
+  C2:
+    datasets: [IEMOCAP, MELD]
+    seed_set: stability
+    overrides: {model: {architecture: drvc, variant: C2}}
+  C3:
+    datasets: [IEMOCAP, MELD]
+    seed_set: stability
+    overrides: {model: {architecture: drvc, variant: C3}}
+  G1:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: G1}}
+  G2:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: G2}}
+  N4:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: N4}}
+
+  R1_static:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: B2, active_regions: [global]}}
+  R1_relative:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: B6, active_regions: [global]}}
+  R2_static:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: B2, active_regions: [brow, eye]}}
+  R2_relative:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: B6, active_regions: [brow, eye]}}
+  R3_static:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: B2, active_regions: [brow, eye, mouth]}}
+  R3_relative:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: B6, active_regions: [brow, eye, mouth]}}
+  R4_static:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: B2, active_regions: [global, brow, eye]}}
+  R4_relative:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: B6, active_regions: [global, brow, eye]}}
+  R5_static:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: B2, active_regions: [mouth]}}
+  R5_relative:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: B6, active_regions: [mouth]}}
+
+  V_static:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: B2, enabled_modalities: [visual]}}
+  V_relative:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: B6, enabled_modalities: [visual]}}
+  AV_static:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: B2, enabled_modalities: [audio, visual]}}
+  AV_relative:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: B6, enabled_modalities: [audio, visual]}}
+  TV_static:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: B2, enabled_modalities: [text, visual]}}
+  TV_relative:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: B6, enabled_modalities: [text, visual]}}
+
+  FERPlus_static:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    feature_cache_tag: true
+    overrides:
+      video: {visual_backbone: ferplus_resnet18, visual_checkpoint: checkpoints/ferplus_resnet18.pt}
+      model: {architecture: drvc, variant: B2}
+  FERPlus_relative:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    feature_cache_tag: true
+    overrides:
+      video: {visual_backbone: ferplus_resnet18, visual_checkpoint: checkpoints/ferplus_resnet18.pt}
+      model: {architecture: drvc, variant: B6}
+  GRU_static:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: B2, context_encoder: gru}}
+  GRU_relative:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: B6, context_encoder: gru}}
+
+  bidirectional_B2:
+    datasets: [MELD]
+    seed_set: final
+    overrides:
+      model: {architecture: drvc, variant: B2, context_direction: bidirectional, context_window: 31, bidirectional_past: 15, bidirectional_future: 15}
+  bidirectional_C2:
+    datasets: [MELD]
+    seed_set: final
+    overrides:
+      model: {architecture: drvc, variant: C2, context_direction: bidirectional, context_window: 31, bidirectional_past: 15, bidirectional_future: 15}
+  bidirectional_C3:
+    datasets: [MELD]
+    seed_set: final
+    overrides:
+      model: {architecture: drvc, variant: C3, context_direction: bidirectional, context_window: 31, bidirectional_past: 15, bidirectional_future: 15}
+  bidirectional_B6:
+    datasets: [MELD]
+    seed_set: final
+    overrides:
+      model: {architecture: drvc, variant: B6, context_direction: bidirectional, context_window: 31, bidirectional_past: 15, bidirectional_future: 15}
+
+  MMGCN:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: mmgcn, variant: B2, mmgcn_layers: 64, mmgcn_alpha: 0.1, mmgcn_lambda: 0.5}}
+  SDT:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: sdt, variant: B2, distillation_weight: 0.5}}
+  CSS:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: css, variant: B2, css_rank: 16, css_polynomial_order: 3, css_pgm_mix: 0.0}}
+  CSS_mix:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: css, variant: B2, css_rank: 16, css_polynomial_order: 3, css_pgm_mix: 0.4}}
+
+  K2:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    reference_tag: true
+    overrides: {video: {long_history_k: 2}, model: {architecture: drvc, variant: B6}}
+  K8:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    reference_tag: true
+    overrides: {video: {long_history_k: 8}, model: {architecture: drvc, variant: B6}}
+  frames4:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    feature_cache_tag: true
+    reference_tag: true
+    overrides: {video: {max_frames: 4}, model: {architecture: drvc, variant: B6}}
+  frames16:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    feature_cache_tag: true
+    reference_tag: true
+    overrides: {video: {max_frames: 16}, model: {architecture: drvc, variant: B6}}
+  change_signed:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: B6, change_operator: [signed]}}
+  change_signed_absolute:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    overrides: {model: {architecture: drvc, variant: B6, change_operator: [signed, absolute]}}
+  history_includes_recent:
+    datasets: [IEMOCAP, MELD]
+    seed_set: final
+    reference_tag: true
+    overrides:
+      video: {include_recent_in_history: true}
+      model: {architecture: drvc, variant: B6}
+
+release_artifacts:
+  predictions: per model, dataset, fold, and final seed
+  run_records: provenance.json, history.json, run_summary.json, and best.pt metadata
+  search_records: one six-trial search_summary.json per model and development split
+  interventions: N1_other_speaker, N2_older_random, and N3_self_copy prediction files
+  audits: de-identified sample lists, independent annotations, adjudications, and summaries

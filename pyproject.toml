@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "drvc-net"
 version = "0.1.0"
-description = "Reference implementation of DRVC-Net for multimodal emotion recognition in conversations"
+description = "DRVC-Net for multimodal emotion recognition in conversations"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -14,6 +14,7 @@ dependencies = [
   "pandas>=2.2,<3",
   "PyYAML>=6.0,<7",
   "scikit-learn>=1.4,<2",
+  "scipy>=1.12,<2",
   "torch==2.3.1",
   "torchaudio==2.3.1",
   "torchvision==0.18.1",
@@ -43,13 +44,18 @@ drvc-prepare-visual = "drvcnet.cli:prepare_visual_main"
 drvc-build-perturbation = "drvcnet.cli:build_perturbation_main"
 drvc-extract-features = "drvcnet.cli:extract_features_main"
 drvc-build-references = "drvcnet.cli:build_references_main"
+drvc-build-audit-sample = "drvcnet.cli:build_audit_sample_main"
+drvc-summarize-audit = "drvcnet.cli:summarize_audit_main"
+drvc-select-quality-threshold = "drvcnet.cli:select_quality_threshold_main"
 drvc-train = "drvcnet.cli:train_main"
 drvc-search = "drvcnet.cli:search_main"
+drvc-build-revision-configs = "drvcnet.cli:build_revision_configs_main"
 drvc-evaluate = "drvcnet.cli:evaluate_main"
 drvc-stress-test = "drvcnet.cli:stress_test_main"
 drvc-statistics = "drvcnet.cli:statistics_main"
 drvc-shift-contrast = "drvcnet.cli:shift_contrast_main"
 drvc-summarize = "drvcnet.cli:summarize_main"
+drvc-validate-release = "drvcnet.cli:validate_release_main"
 drvc-build-intervention = "drvcnet.cli:build_intervention_main"
 
 [tool.setuptools.packages.find]

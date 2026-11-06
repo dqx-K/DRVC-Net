@@ -33,10 +33,14 @@ class VideoConfig:
     quality_threshold: float = 0.0
     long_history_k: int = 4
     quality_epsilon: float = 1.0e-6
+    include_recent_in_history: bool = False
+    visual_backbone: str = "imagenet_resnet18"
+    visual_checkpoint: Path | None = None
 
 
 @dataclass(frozen=True)
 class ModelConfig:
+    architecture: str = "drvc"
     variant: ModelVariant = ModelVariant.B6
     text_input_dim: int = 768
     audio_input_dim: int = 768
@@ -51,11 +55,24 @@ class ModelConfig:
     classifier_hidden_dim: int = 256
     dropout: float = 0.2
     enabled_modalities: tuple[str, ...] = ("text", "audio", "visual")
+    active_regions: tuple[str, ...] = REGIONS
+    change_operator: tuple[str, ...] = ("signed", "absolute", "product")
+    context_encoder: str = "transformer"
+    context_direction: str = "causal"
+    bidirectional_past: int = 15
+    bidirectional_future: int = 15
     norm_first: bool = True
     c1_hidden_dim: int = 1152
     c2_hidden_dim: int = 342
     c3_ff_dim: int = 640
     shift_lambda: float = 0.0
+    distillation_weight: float = 0.5
+    css_rank: int = 16
+    css_polynomial_order: int = 3
+    css_pgm_mix: float = 0.0
+    mmgcn_layers: int = 64
+    mmgcn_alpha: float = 0.1
+    mmgcn_lambda: float = 0.5
 
 
 @dataclass(frozen=True)
@@ -88,6 +105,7 @@ class EvaluationConfig:
 @dataclass(frozen=True)
 class ExperimentConfig:
     experiment: str
+    model_label: str
     dataset: DatasetConfig
     video: VideoConfig
     model: ModelConfig
@@ -109,6 +127,13 @@ def _require_mapping(raw: dict[str, Any], key: str) -> dict[str, Any]:
     return value
 
 
+def _project_base(source: Path) -> Path:
+    for candidate in source.parents:
+        if (candidate / "pyproject.toml").is_file():
+            return candidate
+    return source.parent.parent if source.parent.name == "configs" else source.parent
+
+
 def load_config(path: str | Path) -> ExperimentConfig:
     """Load YAML without executing arbitrary constructors and validate invariants."""
 
@@ -116,7 +141,7 @@ def load_config(path: str | Path) -> ExperimentConfig:
     raw = yaml.safe_load(source.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
         raise ValueError("Top-level configuration must be a mapping")
-    base = source.parent.parent if source.parent.name == "configs" else source.parent
+    base = _project_base(source)
 
     d = _require_mapping(raw, "dataset")
     v = _require_mapping(raw, "video")
@@ -143,8 +168,14 @@ def load_config(path: str | Path) -> ExperimentConfig:
         quality_threshold=float(v["quality_threshold"]),
         long_history_k=int(v.get("long_history_k", 4)),
         quality_epsilon=float(v.get("quality_epsilon", 1.0e-6)),
+        include_recent_in_history=bool(v.get("include_recent_in_history", False)),
+        visual_backbone=str(v.get("visual_backbone", "imagenet_resnet18")).lower(),
+        visual_checkpoint=(
+            None if v.get("visual_checkpoint") is None else _path(base, v["visual_checkpoint"])
+        ),
     )
     model = ModelConfig(
+        architecture=str(m.get("architecture", "drvc")).lower(),
         variant=ModelVariant(str(m.get("variant", "B6")).upper()),
         text_input_dim=int(m.get("text_input_dim", 768)),
         audio_input_dim=int(m.get("audio_input_dim", 768)),
@@ -159,11 +190,27 @@ def load_config(path: str | Path) -> ExperimentConfig:
         classifier_hidden_dim=int(m.get("classifier_hidden_dim", 256)),
         dropout=float(m.get("dropout", 0.2)),
         enabled_modalities=tuple(m.get("enabled_modalities", ["text", "audio", "visual"])),
+        active_regions=tuple(str(item) for item in m.get("active_regions", REGIONS)),
+        change_operator=tuple(
+            str(item).lower()
+            for item in m.get("change_operator", ["signed", "absolute", "product"])
+        ),
+        context_encoder=str(m.get("context_encoder", "transformer")).lower(),
+        context_direction=str(m.get("context_direction", "causal")).lower(),
+        bidirectional_past=int(m.get("bidirectional_past", 15)),
+        bidirectional_future=int(m.get("bidirectional_future", 15)),
         norm_first=bool(m.get("norm_first", True)),
         c1_hidden_dim=int(m.get("c1_hidden_dim", 1152)),
         c2_hidden_dim=int(m.get("c2_hidden_dim", 342)),
         c3_ff_dim=int(m.get("c3_ff_dim", 640)),
         shift_lambda=float(m.get("shift_lambda", 0.0)),
+        distillation_weight=float(m.get("distillation_weight", 0.5)),
+        css_rank=int(m.get("css_rank", 16)),
+        css_polynomial_order=int(m.get("css_polynomial_order", 3)),
+        css_pgm_mix=float(m.get("css_pgm_mix", 0.0)),
+        mmgcn_layers=int(m.get("mmgcn_layers", 64)),
+        mmgcn_alpha=float(m.get("mmgcn_alpha", 0.1)),
+        mmgcn_lambda=float(m.get("mmgcn_lambda", 0.5)),
     )
     train = TrainConfig(
         seed=int(t.get("seed", 42)),
@@ -186,6 +233,12 @@ def load_config(path: str | Path) -> ExperimentConfig:
     )
     config = ExperimentConfig(
         experiment=str(raw.get("experiment", "drvc")),
+        model_label=str(
+            raw.get(
+                "model_label",
+                model.variant.value if model.architecture == "drvc" else model.architecture.upper(),
+            )
+        ),
         dataset=dataset,
         video=video,
         model=model,
@@ -212,6 +265,14 @@ def validate_config(config: ExperimentConfig) -> None:
         raise ValueError("quality_threshold must be in [0, 1]")
     if config.video.long_history_k < 1:
         raise ValueError("long_history_k must be positive")
+    if config.video.visual_backbone not in {"imagenet_resnet18", "ferplus_resnet18"}:
+        raise ValueError("visual_backbone must be imagenet_resnet18 or ferplus_resnet18")
+    if config.video.visual_backbone == "ferplus_resnet18" and config.video.visual_checkpoint is None:
+        raise ValueError("ferplus_resnet18 requires video.visual_checkpoint")
+    if config.model.architecture not in {"drvc", "mmgcn", "sdt", "css"}:
+        raise ValueError("model.architecture must be drvc, mmgcn, sdt, or css")
+    if config.model.architecture != "drvc" and config.model.context_direction != "causal":
+        raise ValueError("External architecture reproductions use causal dialogue access")
     if config.model.context_window < 1:
         raise ValueError("context_window must be positive")
     if config.model.hidden_dim % config.model.context_heads != 0:
@@ -229,3 +290,34 @@ def validate_config(config: ExperimentConfig) -> None:
     unknown_modalities = set(config.model.enabled_modalities) - {"text", "audio", "visual"}
     if unknown_modalities:
         raise ValueError(f"Unknown modalities: {sorted(unknown_modalities)}")
+    unknown_regions = set(config.model.active_regions) - set(REGIONS)
+    if unknown_regions:
+        raise ValueError(f"Unknown active regions: {sorted(unknown_regions)}")
+    if len(set(config.model.active_regions)) != len(config.model.active_regions):
+        raise ValueError("active_regions must not contain duplicates")
+    allowed_operators = {"signed", "absolute", "product"}
+    unknown_operators = set(config.model.change_operator) - allowed_operators
+    if unknown_operators or not config.model.change_operator:
+        raise ValueError(f"Invalid change_operator values: {sorted(unknown_operators)}")
+    if len(set(config.model.change_operator)) != len(config.model.change_operator):
+        raise ValueError("change_operator must not contain duplicates")
+    if config.model.context_encoder not in {"transformer", "gru"}:
+        raise ValueError("context_encoder must be transformer or gru")
+    if config.model.context_direction not in {"causal", "bidirectional"}:
+        raise ValueError("context_direction must be causal or bidirectional")
+    if config.model.context_direction == "bidirectional":
+        required = config.model.bidirectional_past + config.model.bidirectional_future + 1
+        if config.model.context_window < required:
+            raise ValueError("context_window is too short for the bidirectional target window")
+        if config.model.context_encoder != "transformer":
+            raise ValueError("The bidirectional control uses the Transformer context encoder")
+    if config.model.distillation_weight < 0:
+        raise ValueError("distillation_weight must be nonnegative")
+    if config.model.css_rank < 1 or config.model.css_polynomial_order < 1:
+        raise ValueError("CSS rank and polynomial order must be positive")
+    if not 0 <= config.model.css_pgm_mix <= 1:
+        raise ValueError("css_pgm_mix must be in [0, 1]")
+    if config.model.mmgcn_layers < 1:
+        raise ValueError("mmgcn_layers must be positive")
+    if not 0 < config.model.mmgcn_alpha < 1 or config.model.mmgcn_lambda <= 0:
+        raise ValueError("MMGCN alpha must be in (0, 1) and lambda must be positive")

@@ -17,14 +17,21 @@ from drvcnet.evaluation.statistics import (
 )
 from drvcnet.evaluation.interventions import build_reference_intervention
 from drvcnet.evaluation.reporting import subgroup_report, summarize_predictions
+from drvcnet.evaluation.release import validate_release_package
 from drvcnet.io import atomic_write_json, read_jsonl
 from drvcnet.preprocessing.detection import extract_face_track_candidates, merge_speaker_assignments
 from drvcnet.preprocessing.features import extract_frozen_features
+from drvcnet.preprocessing.audit import (
+    build_assignment_audit_sample,
+    select_quality_threshold,
+    summarize_assignment_audit,
+)
 from drvcnet.preprocessing.quality import SharpnessCalibration
 from drvcnet.preprocessing.speaker import calibrate_speaker_scores
 from drvcnet.preprocessing.perturbations import build_corrupted_observations
 from drvcnet.preprocessing.visual import calibrate_sharpness, prepare_visual_observations
 from drvcnet.training.engine import evaluate_checkpoint, train_experiment
+from drvcnet.training.config_matrix import build_revision_configs
 from drvcnet.training.search import development_search
 
 
@@ -200,6 +207,57 @@ def build_references_main() -> None:
     print(json.dumps({"reference_records": len(values)}))
 
 
+def build_audit_sample_main() -> None:
+    parser = argparse.ArgumentParser(description="Build the stratified speaker-assignment audit")
+    parser.add_argument("--manifest", required=True)
+    parser.add_argument("--assignments", required=True)
+    parser.add_argument("--dataset", required=True, choices=["IEMOCAP", "MELD"])
+    parser.add_argument("--output", required=True)
+    parser.add_argument("--seed", type=int, default=2024)
+    args = parser.parse_args()
+    records = build_assignment_audit_sample(
+        args.manifest,
+        args.assignments,
+        args.output,
+        dataset=args.dataset,
+        seed=args.seed,
+    )
+    print(json.dumps({"audit_records": len(records), "output": args.output}))
+
+
+def summarize_audit_main() -> None:
+    parser = argparse.ArgumentParser(description="Summarize completed assignment annotations")
+    parser.add_argument("--audit", required=True)
+    parser.add_argument("--output", required=True)
+    parser.add_argument("--repeats", type=int, default=10_000)
+    parser.add_argument("--seed", type=int, default=2024)
+    args = parser.parse_args()
+    payload = summarize_assignment_audit(
+        args.audit, args.output, repeats=args.repeats, seed=args.seed
+    )
+    print(json.dumps(payload, indent=2))
+
+
+def select_quality_threshold_main() -> None:
+    parser = argparse.ArgumentParser(description="Select a training-only quality threshold")
+    parser.add_argument("--audit", required=True)
+    parser.add_argument("--output", required=True)
+    parser.add_argument("--start", type=float, required=True)
+    parser.add_argument("--stop", type=float, required=True)
+    parser.add_argument("--step", type=float, default=0.02)
+    parser.add_argument("--minimum-accuracy", type=float, required=True)
+    args = parser.parse_args()
+    if args.step <= 0 or args.stop < args.start:
+        raise ValueError("Threshold range requires stop >= start and step > 0")
+    count = int(round((args.stop - args.start) / args.step))
+    candidates = [round(args.start + index * args.step, 10) for index in range(count + 1)]
+    payload = select_quality_threshold(
+        list(read_jsonl(args.audit)), candidates, args.minimum_accuracy
+    )
+    atomic_write_json(args.output, payload)
+    print(json.dumps(payload, indent=2))
+
+
 def train_main() -> None:
     parser = argparse.ArgumentParser(description="Train one DRVC-Net fold/seed run")
     parser.add_argument("--config", required=True)
@@ -216,15 +274,41 @@ def search_main() -> None:
     print(json.dumps(development_search(load_config(args.config), device_name=args.device), indent=2))
 
 
+def build_revision_configs_main() -> None:
+    parser = argparse.ArgumentParser(description="Expand the complete revision experiment matrix")
+    parser.add_argument("--iemocap-base", required=True)
+    parser.add_argument("--meld-base", required=True)
+    parser.add_argument("--protocol", required=True)
+    parser.add_argument("--output-dir", required=True)
+    parser.add_argument("--experiments", nargs="*")
+    args = parser.parse_args()
+    paths = build_revision_configs(
+        {"IEMOCAP": args.iemocap_base, "MELD": args.meld_base},
+        args.protocol,
+        args.output_dir,
+        selected_experiments=args.experiments,
+    )
+    print(json.dumps({"configurations": len(paths), "output_dir": args.output_dir}))
+
+
 def evaluate_main() -> None:
     parser = argparse.ArgumentParser(description="Evaluate one trained checkpoint")
     parser.add_argument("--config", required=True)
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--split", default="test", choices=["train", "dev", "test"])
     parser.add_argument("--device")
+    parser.add_argument("--reference-file")
+    parser.add_argument("--reference-feature-index")
+    parser.add_argument("--prediction-file")
     args = parser.parse_args()
     value = evaluate_checkpoint(
-        load_config(args.config), args.checkpoint, split=args.split, device_name=args.device
+        load_config(args.config),
+        args.checkpoint,
+        split=args.split,
+        device_name=args.device,
+        reference_file=args.reference_file,
+        reference_feature_index=args.reference_feature_index,
+        prediction_file=args.prediction_file,
     )
     print(json.dumps(value, indent=2))
 
@@ -285,6 +369,22 @@ def summarize_main() -> None:
         ),
     }
     atomic_write_json(args.output, payload)
+    print(json.dumps(payload, indent=2))
+
+
+def validate_release_main() -> None:
+    parser = argparse.ArgumentParser(description="Check revision result-package completeness")
+    parser.add_argument("--config-root", required=True)
+    parser.add_argument("--output", required=True)
+    parser.add_argument("--interventions", nargs="*", default=[])
+    parser.add_argument("--audits", nargs="*", default=[])
+    args = parser.parse_args()
+    payload = validate_release_package(
+        args.config_root,
+        args.output,
+        intervention_files=args.interventions,
+        audit_files=args.audits,
+    )
     print(json.dumps(payload, indent=2))
 
 

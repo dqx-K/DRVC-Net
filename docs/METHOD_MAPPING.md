@@ -25,7 +25,8 @@ live `512 -> 256` projection and LayerNorm.
 Eligibility requires earlier order, same dialogue, same dataset speaker ID,
 valid region, quality at least `tau_q`, and the dataset timing boundary. The
 latest eligible item is the recent reference. The historical pool is the last
-`K=4` eligible items after excluding the recent reference. It is pooled after
+`K=4` eligible items after excluding the recent reference. The
+`include_recent_in_history` control implements the corresponding extension. It is pooled after
 each member passes through the same live regional projection as the current
 observation.
 
@@ -35,7 +36,7 @@ computed from all class-retained turns by that speaker, not from wall-clock time
 
 ## Change and gates
 
-For every region and branch, independent weights implement:
+For every region and branch, independent weights implement the complete operator:
 
 `phi([v-b, abs(v-b), v*b]): 768 -> 256 -> 256`, GELU and dropout.
 
@@ -57,9 +58,12 @@ all-invalid case bypasses softmax and returns exact zeros.
 - Metadata has 42 entries: text/audio availability and, per region, current
   mask/quality plus recent and historical mask/quality/log-count/log-age.
 - The fused 256-dimensional utterance token receives learned order embeddings
-  and enters a two-layer, four-head, causal Transformer with FFN dimension 1024.
-- A causal window contains the current plus at most 31 prior utterances. Only its
-  final real token is classified and supervised.
+  and enters a two-layer, four-head Transformer with FFN dimension 1024.
+- The main causal window contains the current plus at most 31 prior utterances.
+  The bidirectional MELD control contains at most 15 earlier and 15 later
+  utterances and records the target position explicitly.
+- The GRU extension replaces the context Transformer with a unidirectional GRU;
+  all other inputs and the supervised target remain unchanged.
 
 Three conventional architecture choices are configuration-controlled: classifier
 width, Transformer norm order, and positional embedding type. The reproducible
@@ -89,3 +93,17 @@ defaults are a 256-hidden classifier, a pre-norm Transformer, and learned
 
 Use `scripts/parameter_report.py` to set the control widths and verify the paper's
 within-5% trainable-parameter matching criterion before launching experiments.
+
+## Revision experiments
+
+`configs/revision_protocol.yaml` defines the five-seed core replication,
+bidirectional MELD control, R1--R5 region pairs, modality pairs, FER+ visual
+backbone, GRU context model, operating-point variants, and the MMGCN, SDT, and
+CSS common-protocol reproductions. `drvc-build-revision-configs` expands this
+matrix into one configuration per dataset, fold, seed, and development search.
+
+The external models use the same cached RoBERTa, wav2vec 2.0, and regional visual
+features as DRVC-Net. MMGCN uses past-only graph edges, SDT applies causal
+intra/inter-modal attention with self-distillation, and CSS combines causal
+cross-space attention with rank-16 third-order polynomial fusion and PGM. Setting
+`css_pgm_mix` to `0.4` enables the separately reported exploratory weight mix.

@@ -26,10 +26,13 @@ class VisualReferenceOutput:
 
 
 class ChangeMLP(nn.Module):
-    def __init__(self, hidden_dim: int, dropout: float) -> None:
+    def __init__(
+        self, hidden_dim: int, dropout: float, operators: tuple[str, ...]
+    ) -> None:
         super().__init__()
+        self.operators = operators
         self.network = nn.Sequential(
-            nn.Linear(3 * hidden_dim, hidden_dim),
+            nn.Linear(len(operators) * hidden_dim, hidden_dim),
             nn.GELU(),
             nn.Dropout(dropout),
             nn.Linear(hidden_dim, hidden_dim),
@@ -37,7 +40,12 @@ class ChangeMLP(nn.Module):
 
     def forward(self, current: Tensor, reference: Tensor) -> Tensor:
         difference = current - reference
-        inputs = torch.cat([difference, difference.abs(), current * reference], dim=-1)
+        values = {
+            "signed": difference,
+            "absolute": difference.abs(),
+            "product": current * reference,
+        }
+        inputs = torch.cat([values[name] for name in self.operators], dim=-1)
         return self.network(inputs)
 
 
@@ -148,10 +156,10 @@ class VisualReferenceModule(nn.Module):
             )
         else:
             self.recent_proposals = nn.ModuleList(
-                [proposal_type(h, config.dropout) for _ in REGIONS]
+                [proposal_type(h, config.dropout, config.change_operator) for _ in REGIONS]
             )
             self.historical_proposals = nn.ModuleList(
-                [proposal_type(h, config.dropout) for _ in REGIONS]
+                [proposal_type(h, config.dropout, config.change_operator) for _ in REGIONS]
             )
         include_quality = self.variant is not ModelVariant.G1
         self.recent_gates = nn.ModuleList(
@@ -332,7 +340,11 @@ class VisualReferenceModule(nn.Module):
         current_valid = batch["visual_valid"].bool()
         active = torch.zeros(len(REGIONS), dtype=torch.bool, device=current_valid.device)
         if self.variant.uses_visual and "visual" in self.config.enabled_modalities:
-            active[list(self.variant.active_regions)] = True
+            if self.variant is ModelVariant.B1:
+                active[0] = True
+            else:
+                region_indices = [REGIONS.index(name) for name in self.config.active_regions]
+                active[region_indices] = True
         current_valid = current_valid & active.view(*([1] * (current_valid.ndim - 1)), -1)
         current_quality = batch["visual_quality"].float() * current_valid
         current = self._project(batch["visual"].float(), current_valid)

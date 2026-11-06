@@ -61,6 +61,7 @@ def collect_provenance(config: ExperimentConfig) -> dict[str, Any]:
     return {
         "experiment": config.experiment,
         "resolved_config": _jsonable(asdict(config)),
+        "paths": {name: str(path) for name, path in paths.items()},
         "hashes": hashes,
         "git": {
             "commit": _git(["rev-parse", "HEAD"], working_directory),
