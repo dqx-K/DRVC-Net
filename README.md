@@ -231,6 +231,12 @@ development-search, audit, calibration, and recomputation files in
 `Supplementary_m/`. Raw corpora, face crops, frozen feature caches, checkpoints,
 optimizer states, and transient experiment logs are not redistributed.
 
+The complete supplementary verification package is available from the
+[`supplementary-v1` release](https://github.com/dqx-K/DRVC-Net/releases/tag/supplementary-v1).
+Download [`Supplementary_m.rar`](https://github.com/dqx-K/DRVC-Net/releases/download/supplementary-v1/Supplementary_m.rar)
+to obtain the released predictions, metadata, audit records, training records,
+and recomputation materials.
+
 ## Static validation
 
 Run the static repository check with:
